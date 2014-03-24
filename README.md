@@ -20,7 +20,8 @@ flickr.photos.search({
     tags: 'cat'
 }, function(response) {
     var first = response.photos.photo[0];
-    $('body').append('<img src="' + first.src('b') + '">');
+    var src = first.src('b'); // 'b' is an image size (1024 on longest side)
+    $('body').append('<img src="' + src + '">');
 });
 ```
 
@@ -28,3 +29,4 @@ See also
 ========
 
 * [Flickr API documentation](https://www.flickr.com/services/api/)
+* [Image URLs explained](https://www.flickr.com/services/api/misc.urls.html)
