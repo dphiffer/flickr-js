@@ -1,7 +1,8 @@
 flickr.js
 ---------
 
-A basic JavaScript wrapper for the Flickr API. Only implements methods that don't require authentication.
+A simple JavaScript wrapper for the Flickr API. Only implements methods that don't require authentication. Uses jQuery
+and JSONP to retrieve data.
 
 Requirements
 ============
