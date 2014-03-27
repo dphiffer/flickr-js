@@ -14,6 +14,9 @@ function Flickr(init) {
     ajaxSettings.data.api_key = init;
   } else if (typeof init === 'object') {
     jQuery.extend(ajaxSettings, init);
+  } else if (typeof console === 'object' &&
+             typeof console.warn === 'function') {
+    console.warn('Initialize with a Flickr API key: var flickr = new Flickr("...");');
   }
   
   var self = this;
@@ -82,8 +85,15 @@ function Flickr(init) {
         typeof console === 'object' &&
         typeof console.warn === 'function') {
       console.warn('Flickr API method ' + method +
-                   ' requires: ' + missingArgs.join(', '));
+                   ' requires argument: ' + missingArgs.join(', '));
     }
+  }
+  
+  // Credit: http://stackoverflow.com/a/822486
+  function stripHTML(html) {
+    var tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
   }
   
   function getHelp(method, callback) {
@@ -101,7 +111,7 @@ function Flickr(init) {
           optional.push(argument.name);
         }
       }
-      var help = method + ' - ' + response.method.description._content;
+      var help = method + ' - ' + stripHTML(response.method.description._content);
       help += '\n\n' + getUsage(method, required, optional) + '\n';
       if (required.length > 0) {
         help += '\nRequired arguments: ' + required.join(', ');
@@ -109,7 +119,7 @@ function Flickr(init) {
       if (optional.length > 0) {
         help += '\nOptional arguments: ' + optional.join(', ');
       }
-      help += '\nMore info: https://www.flickr.com/services/api/' + method + '.html';
+      help += '\n\nMore info: https://www.flickr.com/services/api/' + method + '.html';
       callback(help);
     });
   }
@@ -138,7 +148,9 @@ function Flickr(init) {
     return usage;
   }
   
+  var methodList = [];
   function createMethod(method, required) {
+    methodList.push(method);
     var methodWrapper = function(args, callback) {
       var settings = jQuery.extend(true, {}, ajaxSettings);
       settings.data.method = method;
@@ -146,6 +158,11 @@ function Flickr(init) {
           required.length === 0) {
         callback = args;
         args = {};
+      } else if (typeof args === 'string' &&
+                 method === 'flickr.photos.search') {
+        args = {
+          text: args
+        };
       } else {
         args = getArgs(args, required);
       }
@@ -154,9 +171,11 @@ function Flickr(init) {
       jQuery.ajax(settings).done(function(response) {
         responseHandler.apply(self, [response, callback, args]);
       });
+      return self;
     };
     methodWrapper.help = function(callback) {
       getHelp(method, callback);
+      return self;
     };
     return methodWrapper;
   }
@@ -312,6 +331,29 @@ function Flickr(init) {
       lookupUser: []
     }
   });
+  
+  this.help = function(method, callback) {
+    callback = getCallback(callback, 'info');
+    if (!method) {
+      callback(
+        'flickr.js - A simple JavaScript wrapper for the Flickr API\n\n' +
+        'To list the available methods: flickr.help(\'methods\')\n' +
+        'To get help about a particular method: flickr.example.methodName.help() or ' +
+        'flickr.help(\'flickr.example.methodName\')\n\n' +
+        'More info: https://www.flickr.com/services/api/'
+      );
+    } else if (method === 'methods') {
+      callback(
+        'To get help about a particular method: flickr.example.methodName.help() or ' +
+        'flickr.help(\'flickr.example.methodName\')\n\n' +
+        methodList.join('\n')
+      );
+    } else {
+      getHelp(method, callback);
+    }
+    return self;
+  };
+  
 }
 
 function FlickrPhoto(flickr, values) {
@@ -349,5 +391,9 @@ FlickrPhoto.prototype.src = function(size, origFormat) {
   } else {
     return base + '_' + size + '.jpg';
   }
+};
+
+FlickrPhoto.prototype.href = function() {
+  return 'https://flickr.com/photos/' + this.owner + '/' + this.id;
 };
 

@@ -1,17 +1,17 @@
 flickr.js
----------
+=========
 
 A simple JavaScript wrapper for the Flickr API. Only implements methods that don't require authentication. Uses jQuery
 and JSONP to retrieve data.
 
 Requirements
-============
+------------
 
 * [jQuery](https://jquery.com/download/)
 * [Flickr API key](https://www.flickr.com/services/apps/create/apply/)
 
 Usage
-=====
+-----
 
 ```js
 var apiKey = '...';
@@ -21,12 +21,18 @@ flickr.photos.search({
 }, function(response) {
     var first = response.photos.photo[0];
     var src = first.src('b'); // 'b' is an image size (1024 on longest side)
-    $('body').append('<img src="' + src + '">');
+    var href = first.href();
+    $('body').append('<a href="' + href + '"><img src="' + src + '"></a>');
 });
 ```
 
+Designed for the JavaScript Console
+-----------------------------------
+
+![Screenshot of Firebug JavaScript Console](https://farm8.staticflickr.com/7161/13447547095_d117e5c78e_b.jpg)
+
 See also
-========
+--------
 
 * [Flickr API documentation](https://www.flickr.com/services/api/)
 * [Image URLs explained](https://www.flickr.com/services/api/misc.urls.html)
