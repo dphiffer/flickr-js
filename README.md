@@ -29,7 +29,7 @@ flickr.photos.search({
 Designed for the JavaScript Console
 -----------------------------------
 
-![Screenshot of Firebug JavaScript Console](https://farm8.staticflickr.com/7161/13447547095_d117e5c78e_b.jpg)
+![Screenshot of Firebug JavaScript Console](https://raw.githubusercontent.com/dphiffer/flickr-js/master/console.jpg)
 
 See also
 --------
