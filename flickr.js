@@ -18,18 +18,20 @@ function Flickr(init) {
   
   var self = this;
   
-  function getCallback(callback) {
+  function getCallback(callback, consoleMethod) {
     if (typeof callback === 'function') {
       return callback;
-    } else if (typeof console === 'object' &&
-               typeof console.log === 'function') {
+    } else if (typeof console === 'object') {
+      if (!consoleMethod) {
+        consoleMethod = 'log';
+      }
       return function(response) {
-        console.log(response);
+        console[consoleMethod](response);
       };
     }
   }
   
-  function responseHandler(response, callback, params) {
+  function responseHandler(response, callback, args) {
     callback = getCallback(callback);
     if (typeof response === 'object') {
       if (response.photos &&
@@ -43,56 +45,87 @@ function Flickr(init) {
           response.photoset.photo[i] = new FlickrPhoto(self, response.photoset.photo[i]);
         }
       }
-      callback.apply(self, [response, params]);
+      callback.apply(self, [response, args]);
     } else {
       callback.apply(self, [{
         stat: 'fail',
         code: -1,
         message: 'No response.'
-      }, params]);
+      }, args]);
     }
   }
   
-  function getParams(params, required) {
-    if (typeof params === 'undefined') {
+  function getArgs(args, required) {
+    if (typeof args === 'undefined') {
       return {};
-    } else if (typeof params !== 'object' &&
+    } else if (typeof args !== 'object' &&
         required.length === 1) {
       var key = required[0];
-      var value = params;
-      var params = {};
-      params[key] = value;
-      return params;
+      var value = args;
+      var args = {};
+      args[key] = value;
+      return args;
     } else {
-      return params;
+      return args;
     }
   }
   
-  function validateParams(method, params, required) {
-    var missingParams = [], key;
+  function validateArgs(method, args, required) {
+    var missingArgs = [], key;
     for (var i = 0; i < required.length; i++) {
-      param = required[i];
-      if (!params[param]) {
-        missingParams.push(param);
+      arg = required[i];
+      if (!args[arg]) {
+        missingArgs.push(arg);
       }
     }
-    if (missingParams.length > 0 &&
+    if (missingArgs.length > 0 &&
         typeof console === 'object' &&
         typeof console.warn === 'function') {
       console.warn('Flickr API method ' + method +
-                   ' requires: ' + missingParams.join(', '));
+                   ' requires: ' + missingArgs.join(', '));
     }
   }
   
-  function getUsage(method, required) {
-    if (required.length === 0) {
+  function getHelp(method, callback) {
+    self.reflection.getMethodInfo(method, function(response) {
+      callback = getCallback(callback, 'info');
+      var required = [];
+      var optional = [];
+      for (var i = 0; i < response.arguments.argument.length; i++) {
+        var argument = response.arguments.argument[i];
+        if (argument.name === 'api_key') {
+          continue;
+        } else if (parseInt(argument.optional, 10) === 0) {
+          required.push(argument.name);
+        } else {
+          optional.push(argument.name);
+        }
+      }
+      var help = method + ' - ' + response.method.description._content;
+      help += '\n\n' + getUsage(method, required, optional) + '\n';
+      if (required.length > 0) {
+        help += '\nRequired arguments: ' + required.join(', ');
+      }
+      if (optional.length > 0) {
+        help += '\nOptional arguments: ' + optional.join(', ');
+      }
+      help += '\nMore info: https://www.flickr.com/services/api/' + method + '.html';
+      callback(help);
+    });
+  }
+  
+  function getUsage(method, required, optional) {
+    if (required.length === 0 &&
+        optional.length === 0) {
       return 'Usage: ' + method + '(callback);';
+    } else if (required.length === 0) {
+      return 'Usage: ' + method + '(arguments, callback);';
     }
     var usage = 'Usage: ' + method + '({\n';
-    var param;
+    var arg;
     for (var i = 0; i < required.length; i++) {
-      param = required[i];
-      usage += '         ' + param + ': [' + param + ']';
+      arg = required[i];
+      usage += '         ' + arg + ': [' + arg + ']';
       if (i < required.length - 1) {
         usage += ',';
       }
@@ -100,34 +133,30 @@ function Flickr(init) {
     }
     usage += '       }, callback);';
     if (required.length === 1) {
-      usage += '\n\n   Or: ' + method + '([' + param + '], callback);';
+      usage += '\n\n   Or: ' + method + '([' + arg + '], callback);';
     }
     return usage;
   }
   
   function createMethod(method, required) {
-    var methodWrapper = function(params, callback) {
+    var methodWrapper = function(args, callback) {
       var settings = jQuery.extend(true, {}, ajaxSettings);
       settings.data.method = method;
-      if (typeof params === 'function' &&
+      if (typeof args === 'function' &&
           required.length === 0) {
-        callback = params;
-        params = {};
+        callback = args;
+        args = {};
       } else {
-        params = getParams(params, required);
+        args = getArgs(args, required);
       }
-      validateParams(method, params, required);
-      jQuery.extend(settings.data, params);
+      validateArgs(method, args, required);
+      jQuery.extend(settings.data, args);
       jQuery.ajax(settings).done(function(response) {
-        responseHandler.apply(self, [response, callback, params]);
+        responseHandler.apply(self, [response, callback, args]);
       });
     };
-    methodWrapper.help = function() {
-      if (typeof console === 'object' &&
-          typeof console.info === 'function') {
-        return console.info(getUsage(method, required));
-      }
-      return getUsage(method, required);
+    methodWrapper.help = function(callback) {
+      getHelp(method, callback);
     };
     return methodWrapper;
   }
